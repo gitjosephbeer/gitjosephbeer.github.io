@@ -1,0 +1,837 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Swiss Railway Clock</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <script src="jsi18n_patch.js">
+    </script>
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0px;
+        }
+
+        body {
+            background-color: #000000;
+        }
+
+        #cnv {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+        }
+    </style>
+</head>
+
+<body onload="clock();">
+
+    <canvas id="cnv"></canvas>
+    <input id="culture" type="hidden" value="de-CH" />
+
+    <script>
+        var clockRadius = 250;
+        var framesPerSecond = 15;
+        var showShadow = true;
+        var lineLength = 24;
+        var lines = 2;
+        var sWeekDay = '';
+        var sDate = '';
+
+        var maxSizeUsage = 0.98;
+        var width = -1.0;
+        var height = -1.0;
+        var segRatio = 1.45;
+        var segVerticalMarginHeightFactor = 0.12;
+        var segHorizontalMarginWidthFactor = 0.0;
+        var segWidth = -1.0;
+        var segHeight = -1.0;
+        var segsHeight = -1.0;
+
+        var nonPrintableCharsRegex = /[\0-\x1F\x7F-\x9F\xAD\u0378\u0379\u037F-\u0383\u038B\u038D\u03A2\u0528-\u0530\u0557\u0558\u0560\u0588\u058B-\u058E\u0590\u05C8-\u05CF\u05EB-\u05EF\u05F5-\u0605\u061C\u061D\u06DD\u070E\u070F\u074B\u074C\u07B2-\u07BF\u07FB-\u07FF\u082E\u082F\u083F\u085C\u085D\u085F-\u089F\u08A1\u08AD-\u08E3\u08FF\u0978\u0980\u0984\u098D\u098E\u0991\u0992\u09A9\u09B1\u09B3-\u09B5\u09BA\u09BB\u09C5\u09C6\u09C9\u09CA\u09CF-\u09D6\u09D8-\u09DB\u09DE\u09E4\u09E5\u09FC-\u0A00\u0A04\u0A0B-\u0A0E\u0A11\u0A12\u0A29\u0A31\u0A34\u0A37\u0A3A\u0A3B\u0A3D\u0A43-\u0A46\u0A49\u0A4A\u0A4E-\u0A50\u0A52-\u0A58\u0A5D\u0A5F-\u0A65\u0A76-\u0A80\u0A84\u0A8E\u0A92\u0AA9\u0AB1\u0AB4\u0ABA\u0ABB\u0AC6\u0ACA\u0ACE\u0ACF\u0AD1-\u0ADF\u0AE4\u0AE5\u0AF2-\u0B00\u0B04\u0B0D\u0B0E\u0B11\u0B12\u0B29\u0B31\u0B34\u0B3A\u0B3B\u0B45\u0B46\u0B49\u0B4A\u0B4E-\u0B55\u0B58-\u0B5B\u0B5E\u0B64\u0B65\u0B78-\u0B81\u0B84\u0B8B-\u0B8D\u0B91\u0B96-\u0B98\u0B9B\u0B9D\u0BA0-\u0BA2\u0BA5-\u0BA7\u0BAB-\u0BAD\u0BBA-\u0BBD\u0BC3-\u0BC5\u0BC9\u0BCE\u0BCF\u0BD1-\u0BD6\u0BD8-\u0BE5\u0BFB-\u0C00\u0C04\u0C0D\u0C11\u0C29\u0C34\u0C3A-\u0C3C\u0C45\u0C49\u0C4E-\u0C54\u0C57\u0C5A-\u0C5F\u0C64\u0C65\u0C70-\u0C77\u0C80\u0C81\u0C84\u0C8D\u0C91\u0CA9\u0CB4\u0CBA\u0CBB\u0CC5\u0CC9\u0CCE-\u0CD4\u0CD7-\u0CDD\u0CDF\u0CE4\u0CE5\u0CF0\u0CF3-\u0D01\u0D04\u0D0D\u0D11\u0D3B\u0D3C\u0D45\u0D49\u0D4F-\u0D56\u0D58-\u0D5F\u0D64\u0D65\u0D76-\u0D78\u0D80\u0D81\u0D84\u0D97-\u0D99\u0DB2\u0DBC\u0DBE\u0DBF\u0DC7-\u0DC9\u0DCB-\u0DCE\u0DD5\u0DD7\u0DE0-\u0DF1\u0DF5-\u0E00\u0E3B-\u0E3E\u0E5C-\u0E80\u0E83\u0E85\u0E86\u0E89\u0E8B\u0E8C\u0E8E-\u0E93\u0E98\u0EA0\u0EA4\u0EA6\u0EA8\u0EA9\u0EAC\u0EBA\u0EBE\u0EBF\u0EC5\u0EC7\u0ECE\u0ECF\u0EDA\u0EDB\u0EE0-\u0EFF\u0F48\u0F6D-\u0F70\u0F98\u0FBD\u0FCD\u0FDB-\u0FFF\u10C6\u10C8-\u10CC\u10CE\u10CF\u1249\u124E\u124F\u1257\u1259\u125E\u125F\u1289\u128E\u128F\u12B1\u12B6\u12B7\u12BF\u12C1\u12C6\u12C7\u12D7\u1311\u1316\u1317\u135B\u135C\u137D-\u137F\u139A-\u139F\u13F5-\u13FF\u169D-\u169F\u16F1-\u16FF\u170D\u1715-\u171F\u1737-\u173F\u1754-\u175F\u176D\u1771\u1774-\u177F\u17DE\u17DF\u17EA-\u17EF\u17FA-\u17FF\u180F\u181A-\u181F\u1878-\u187F\u18AB-\u18AF\u18F6-\u18FF\u191D-\u191F\u192C-\u192F\u193C-\u193F\u1941-\u1943\u196E\u196F\u1975-\u197F\u19AC-\u19AF\u19CA-\u19CF\u19DB-\u19DD\u1A1C\u1A1D\u1A5F\u1A7D\u1A7E\u1A8A-\u1A8F\u1A9A-\u1A9F\u1AAE-\u1AFF\u1B4C-\u1B4F\u1B7D-\u1B7F\u1BF4-\u1BFB\u1C38-\u1C3A\u1C4A-\u1C4C\u1C80-\u1CBF\u1CC8-\u1CCF\u1CF7-\u1CFF\u1DE7-\u1DFB\u1F16\u1F17\u1F1E\u1F1F\u1F46\u1F47\u1F4E\u1F4F\u1F58\u1F5A\u1F5C\u1F5E\u1F7E\u1F7F\u1FB5\u1FC5\u1FD4\u1FD5\u1FDC\u1FF0\u1FF1\u1FF5\u1FFF\u200B-\u200F\u202A-\u202E\u2060-\u206F\u2072\u2073\u208F\u209D-\u209F\u20BB-\u20CF\u20F1-\u20FF\u218A-\u218F\u23F4-\u23FF\u2427-\u243F\u244B-\u245F\u2700\u2B4D-\u2B4F\u2B5A-\u2BFF\u2C2F\u2C5F\u2CF4-\u2CF8\u2D26\u2D28-\u2D2C\u2D2E\u2D2F\u2D68-\u2D6E\u2D71-\u2D7E\u2D97-\u2D9F\u2DA7\u2DAF\u2DB7\u2DBF\u2DC7\u2DCF\u2DD7\u2DDF\u2E3C-\u2E7F\u2E9A\u2EF4-\u2EFF\u2FD6-\u2FEF\u2FFC-\u2FFF\u3040\u3097\u3098\u3100-\u3104\u312E-\u3130\u318F\u31BB-\u31BF\u31E4-\u31EF\u321F\u32FF\u4DB6-\u4DBF\u9FCD-\u9FFF\uA48D-\uA48F\uA4C7-\uA4CF\uA62C-\uA63F\uA698-\uA69E\uA6F8-\uA6FF\uA78F\uA794-\uA79F\uA7AB-\uA7F7\uA82C-\uA82F\uA83A-\uA83F\uA878-\uA87F\uA8C5-\uA8CD\uA8DA-\uA8DF\uA8FC-\uA8FF\uA954-\uA95E\uA97D-\uA97F\uA9CE\uA9DA-\uA9DD\uA9E0-\uA9FF\uAA37-\uAA3F\uAA4E\uAA4F\uAA5A\uAA5B\uAA7C-\uAA7F\uAAC3-\uAADA\uAAF7-\uAB00\uAB07\uAB08\uAB0F\uAB10\uAB17-\uAB1F\uAB27\uAB2F-\uABBF\uABEE\uABEF\uABFA-\uABFF\uD7A4-\uD7AF\uD7C7-\uD7CA\uD7FC-\uF8FF\uFA6E\uFA6F\uFADA-\uFAFF\uFB07-\uFB12\uFB18-\uFB1C\uFB37\uFB3D\uFB3F\uFB42\uFB45\uFBC2-\uFBD2\uFD40-\uFD4F\uFD90\uFD91\uFDC8-\uFDEF\uFDFE\uFDFF\uFE1A-\uFE1F\uFE27-\uFE2F\uFE53\uFE67\uFE6C-\uFE6F\uFE75\uFEFD-\uFF00\uFFBF-\uFFC1\uFFC8\uFFC9\uFFD0\uFFD1\uFFD8\uFFD9\uFFDD-\uFFDF\uFFE7\uFFEF-\uFFFB\uFFFE\uFFFF]/g;
+
+        if (!String.format) {
+            String.format = function (format) {
+
+                var args = Array.prototype.slice.call(arguments, 1);
+                var sprintfRegex = /\{(\d+)\}/g;
+
+                var sprintf = function (match, number) {
+                    return number in args ? args[number] : match;
+                };
+
+                return format.replace(sprintfRegex, sprintf);
+            };
+        }
+
+        function clock() {
+            var canvas = document.getElementById('cnv');
+
+            //guarantee canvas is supported
+            if (!canvas.getContext) {
+                alert('canvas not supported!');
+                return;
+            }
+
+            setDateStrings(new Date());
+            tick();
+        }
+
+        function initCanvas(canvas) {
+            var minFactor = 1.0 + (maxSizeUsage / (lineLength * (1.0 + segHorizontalMarginWidthFactor))) * segRatio * (lines + (lines + 1 + 4) * segVerticalMarginHeightFactor);
+            var min = Math.min(window.innerWidth, window.innerHeight);
+            var max = Math.max(window.innerWidth, window.innerHeight);
+
+            if (max == window.innerHeight && max >= min * minFactor) {
+                // higher than width and hight > width*minFactor
+                width = min * maxSizeUsage;
+                height = width * minFactor;
+            }
+            else {
+                height = min * maxSizeUsage;
+                width = height / minFactor;
+            }
+
+            segWidth = width * (maxSizeUsage / (lineLength * (1.0 + segHorizontalMarginWidthFactor)));
+            segHeight = segWidth * segRatio;
+
+            segsHeight = segHeight * (lines + (lines + 1) * segVerticalMarginHeightFactor);
+
+            canvas.width = width;
+            canvas.height = height;
+            clockRadius = width / 2;
+
+            canvas.setAttribute('style',
+              'margin-top:-' + Math.round(height / 2).toString() + 'px; ' +
+                  'margin-left:-' + Math.round(width / 2).toString() + 'px');
+        }
+
+        /**
+         * Draws a rounded rectangle using the current state of the canvas. 
+         * If you omit the last three params, it will draw a rectangle 
+         * outline with a 5 pixel border radius 
+         * @param {CanvasRenderingContext2D} ctx
+         * @param {Number} x The top left x coordinate
+         * @param {Number} y The top left y coordinate 
+         * @param {Number} width The width of the rectangle 
+         * @param {Number} height The height of the rectangle
+         * @param {Number} radius The corner radius. Defaults to 5;
+         * @param {Boolean} fill Whether to fill the rectangle. Defaults to false.
+         * @param {Boolean} stroke Whether to stroke the rectangle. Defaults to true.
+         */
+        function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
+            if (typeof stroke == "undefined") {
+                stroke = true;
+            }
+            if (typeof radius === "undefined") {
+                radius = 5;
+            }
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+            if (stroke) {
+                ctx.stroke();
+            }
+            if (fill) {
+                ctx.fill();
+            }
+        }
+
+        function pad(width, string, padding) {
+            return (width <= string.length) ? string : pad(width, padding + string, padding)
+        }
+
+        function setDateStrings(date) {
+            var culture = document.getElementById('culture').value;
+
+            sWeekDay = date.toLocaleDateString(culture, { weekday: "long" });
+            sWeekDay = sWeekDay.replace(nonPrintableCharsRegex, '');
+            sWeekDay = pad(Math.floor((lineLength - sWeekDay.length) / 2) + sWeekDay.length, sWeekDay, ' ');
+
+            sDate = date.toLocaleDateString(culture, { year: "numeric", month: "long", day: "numeric" });
+            sDate = sDate.replace(nonPrintableCharsRegex, '');
+            sDate = pad(Math.floor((lineLength - sDate.length) / 2) + sDate.length, sDate, ' ');
+        }
+
+        function tick() {
+            var d = new Date();
+            //debug purposes...
+            //d.setHours(d.getHours() + 4);
+            //d.setMinutes(d.getMinutes() + 10);
+            var h = d.getHours();
+            var m = d.getMinutes() + h * 60;
+            var s = d.getSeconds() + m * 60;
+            var ms = d.getMilliseconds();
+            ms = ms - ms % framesPerSecond;
+
+            var secAngle = ((-90 + s * 6 + ms * 0.006) + 360) % 360;
+            var minDiff = 0;
+            if (secAngle >= 270 && secAngle < 276) {
+                secAngle = 270;
+                minDiff = -6;
+            }
+            else {
+                setDateStrings(d);
+            }
+
+            var minAngle = ((-90 + s * 0.1) + 360) % 360;
+            minAngle = minAngle - minAngle % 6 + minDiff;
+
+            var hourAngle = ((-90 + (s / 120)) + 360) % 360;
+
+            var canvas = document.getElementById('cnv');
+            initCanvas(canvas);
+            var ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 2 * clockRadius, 2 * clockRadius);
+
+            ctx.translate(0, 0);
+            drawFace(ctx);
+            drawJbt(ctx);
+
+            ctx.translate(clockRadius, clockRadius);
+            drawTicks(ctx);
+            drawHourHand(ctx, hourAngle);
+            drawMinHand(ctx, minAngle);
+            drawSecHand(ctx, secAngle);
+            ctx.translate(-clockRadius, -clockRadius);
+            drawFace2(ctx);
+
+            drawFlipPanel(ctx);
+            drawFlipPanelLine(0, ctx, sWeekDay);
+            drawFlipPanelLine(1, ctx, sDate);
+
+            setTimeout(tick, 1000 / framesPerSecond);
+        }
+
+        function drawFlipPanel(ctx, text) {
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            ctx.shadowBlur = 0;
+
+            ctx.fillStyle = '#002E8C';
+            roundRect(ctx,
+                  (width - segWidth * lineLength - segWidth * (lineLength - 1) * segHorizontalMarginWidthFactor - 2.0 * segHeight * segVerticalMarginHeightFactor) / 2.0
+                , height - segHeight * (lines + (lines + 1) * segVerticalMarginHeightFactor)
+                , segWidth * lineLength + segWidth * (lineLength - 1) * segHorizontalMarginWidthFactor + 2.0 * segHeight * segVerticalMarginHeightFactor
+                , segHeight * (lines + (lines + 1) * segVerticalMarginHeightFactor)
+                , segHeight * segVerticalMarginHeightFactor / 2, true, false);
+        }
+
+        function drawFlipPanelLine(line, ctx, text) {
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            ctx.shadowBlur = 0;
+            ctx.save();
+
+            var startX = (width - segWidth * lineLength - segWidth * (lineLength - 1) * segHorizontalMarginWidthFactor - 2.0 * segHeight * segVerticalMarginHeightFactor) / 2.0
+                         + segHeight * segVerticalMarginHeightFactor;
+            var offsetY = height - segHeight * (lines - line + (lines - line) * segVerticalMarginHeightFactor);
+            var myText = text == null ? '' : text.toString().toLocaleUpperCase();
+            var fontText = "normal bold " + (segWidth * 0.97).toString() + 'px Arial';
+            for (var i = 0; i < lineLength; i++) {
+                var offsetX = startX + i * (segWidth * (1.0 + segHorizontalMarginWidthFactor));
+
+                ctx.beginPath();
+                ctx.rect(offsetX, offsetY, segWidth, segHeight);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+                ctx.fill();
+                ctx.closePath();
+
+                ctx.beginPath();
+                ctx.rect(offsetX, offsetY, segWidth * 0.97, segHeight * 0.98);
+                ctx.fillStyle = 'rgba(0, 34, 102, 1)';
+                ctx.fill();
+                ctx.closePath();
+
+                ctx.beginPath();
+                ctx.rect(offsetX + segWidth * 0.03, offsetY + segHeight * 0.03, segWidth * 0.90, segHeight * 0.91);
+                ctx.fillStyle = '#0035A0';
+                ctx.fill();
+                ctx.closePath();
+
+
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+                if (i < myText.length) {
+                    var ch = myText[i];
+                    if (myText.length > lineLength & i >= lineLength - 3) {
+                        ch = '.';
+                    }
+                    ctx.font = fontText;
+                    ctx.fillStyle = '#FFFFFF';
+
+                    var txtMeasure = ctx.measureText(ch);
+                    dx = (segWidth - Math.min(txtMeasure.width, segWidth * 0.97)) / 2;
+
+                    ctx.fillText(ch, offsetX + dx, offsetY + segHeight * 0.71, segWidth);
+                }
+                ctx.beginPath();
+                ctx.rect(offsetX, offsetY + segHeight * 0.5, segWidth * 0.90, segHeight * 0.03);
+                ctx.fillStyle = 'rgba(0,0,0,0.35)';
+                ctx.fill();
+                ctx.closePath();
+            }
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            ctx.shadowBlur = 0;
+        }
+
+        function drawFace(ctx) {
+            // background
+            ctx.beginPath();
+            ctx.rect(0, 0, clockRadius * 2, clockRadius * 2);
+            ctx.fillStyle = '#000000';
+            ctx.fill();
+            ctx.closePath();
+
+            //outmost light grey ring
+            var g0x1 = 0;
+            var g0y1 = 0;
+            var g0x2 = 2 * clockRadius;
+            var g0y2 = 2 * clockRadius;
+            var g0 = ctx.createLinearGradient(g0x1, g0y1, g0x2, g0y2);
+            g0.addColorStop(0, '#7C7C7C');
+            g0.addColorStop(1, '#B3B3B3');
+
+            ctx.beginPath();
+            ctx.arc(clockRadius, clockRadius, clockRadius, 0, 2 * Math.PI);
+            ctx.fillStyle = g0;
+            ctx.fill();
+            ctx.closePath();
+
+            //outer gradient bezel
+            var g1x1 = 0;
+            var g1y1 = 0;
+            var g1x2 = 2 * clockRadius;
+            var g1y2 = 2 * clockRadius;
+            var g1 = ctx.createLinearGradient(g1x1, g1y1, g1x2, g1y2);
+            g1.addColorStop(0, '#ABABAB');
+            g1.addColorStop(1, '#949494');
+
+            ctx.beginPath();
+            ctx.arc(clockRadius, clockRadius, 0.99 * clockRadius, 0, 2 * Math.PI);
+            ctx.fillStyle = g1;
+            ctx.fill();
+            ctx.closePath();
+
+            //next outer bezel
+            var g2x1 = 0;
+            var g2y1 = 0;
+            var g2x2 = 2 * clockRadius;
+            var g2y2 = 2 * clockRadius;
+            var g2 = ctx.createLinearGradient(g2x1, g2y1, g2x2, g2y2);
+            g2.addColorStop(0, '#C0C0C0');
+            g2.addColorStop(1, '#D5D5D5');
+
+            ctx.beginPath();
+            ctx.arc(clockRadius, clockRadius, 0.95 * clockRadius, 0, 2 * Math.PI);
+            ctx.fillStyle = g2;
+            ctx.fill();
+            ctx.closePath();
+
+            //tan clock face
+            var g3x1 = clockRadius + 0.94 * clockRadius * Math.cos(4 / 3 * Math.PI);
+            var g3y1 = clockRadius + 0.94 * clockRadius * Math.sin(4 / 3 * Math.PI);
+            var g3x2 = clockRadius + 0.94 * clockRadius * Math.cos(1 / 3 * Math.PI);
+            var g3y2 = clockRadius + 0.94 * clockRadius * Math.sin(1 / 3 * Math.PI);
+            var g3 = ctx.createLinearGradient(g3x1, g3y1, g3x2, g3y2);
+            g3.addColorStop(0, '#BEC4C4');
+            g3.addColorStop(1, '#C6CCCC');
+
+            ctx.beginPath();
+            ctx.arc(clockRadius, clockRadius, 0.94 * clockRadius, 0, 2 * Math.PI);
+            ctx.fillStyle = g3;
+            ctx.fill();
+            ctx.closePath();
+
+            //outer shadow
+            var g4x1 = clockRadius - 0.015 * clockRadius;
+            var g4y1 = clockRadius - 0.015 * clockRadius;
+            var g4 = ctx.createRadialGradient(g4x1, g4y1, 0, g4x1, g4y1, clockRadius);
+            g4.addColorStop(0, 'rgba(255,255,255,0)');
+            g4.addColorStop(0.80, 'rgba(255,255,255,0)');
+            g4.addColorStop(0.95, 'rgba(0,0,0,0.3)');
+            g4.addColorStop(1, 'rgba(0,0,0,0.7)');
+
+            ctx.beginPath();
+            ctx.arc(clockRadius, clockRadius, 0.94 * clockRadius, 0, 2 * Math.PI);
+            ctx.fillStyle = g4;
+            ctx.fill();
+            ctx.closePath();
+
+            if (showShadow) {
+                var g5x1 = clockRadius - 0.007 * clockRadius;
+                var g5y1 = clockRadius + 0.007 * clockRadius;
+                var g5 = ctx.createRadialGradient(g5x1, g5y1, 0, g5x1, g5y1, clockRadius);
+                g5.addColorStop(0, 'rgba(255,255,255,0)');
+                g5.addColorStop(0.91, 'rgba(255,255,255,0)');
+                g5.addColorStop(0.93, 'rgba(0,0,0,0.5)');
+                g5.addColorStop(1, 'rgba(0,0,0,0.6)');
+
+                ctx.beginPath();
+                ctx.arc(clockRadius, clockRadius, 0.94 * clockRadius, 0, 2 * Math.PI);
+                ctx.fillStyle = g5;
+                ctx.fill();
+                ctx.closePath();
+            }
+        }
+
+
+        function drawJbt(ctx) {
+            // thanks to:
+            // http://image.online-convert.com/convert-to-svg
+            // and
+            // http://www.professorcloud.com/svg-to-canvas/
+
+            ctx.save();
+            //ctx.beginPath();
+            //ctx.moveTo(0,0);
+            //ctx.lineTo(467.5,0);
+            //ctx.lineTo(467.5,425);
+            //ctx.lineTo(0,425);
+            //ctx.closePath();
+            //ctx.clip();
+            //ctx.translate(0,0);
+            ctx.translate(0, 0);
+            ctx.scale(1.25, 1.25);
+            ctx.translate(0, 0);
+            ctx.strokeStyle = 'rgba(0,0,0,0)';
+            ctx.lineCap = 'butt';
+            ctx.lineJoin = 'miter';
+            ctx.miterLimit = 4;
+            ctx.save();
+            ctx.restore();
+            ctx.save();
+            ctx.fillStyle = "#000000";
+            ctx.strokeStyle = "rgba(0, 0, 0, 0)";
+            //ctx.translate(0,340);
+            ctx.translate(clockRadius * 0.726, clockRadius * 1.182);
+            //ctx.scale(0.1,-0.1);
+            ctx.scale(clockRadius * 0.00004, -clockRadius * 0.00004);
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(700, 2705);
+            ctx.lineTo(700, 2070);
+            ctx.lineTo(901, 2070);
+            ctx.lineTo(1101, 2070);
+            ctx.lineTo(1122, 2118);
+            ctx.bezierCurveTo(1243, 2393, 1520, 2576, 1831, 2585);
+            ctx.bezierCurveTo(2146, 2595, 2431, 2421, 2569, 2136);
+            ctx.lineTo(2601, 2070);
+            ctx.lineTo(2805, 2070);
+            ctx.bezierCurveTo(3038, 2070, 3023, 2062, 2989, 2163);
+            ctx.bezierCurveTo(2888, 2466, 2659, 2729, 2375, 2867);
+            ctx.bezierCurveTo(2100, 3001, 1764, 3026, 1490, 2933);
+            ctx.bezierCurveTo(1373, 2894, 1185, 2800, 1160, 2770);
+            ctx.bezierCurveTo(1157, 2767, 1140, 2754, 1123, 2741);
+            ctx.lineTo(1090, 2719);
+            ctx.lineTo(1090, 3029);
+            ctx.lineTo(1090, 3340);
+            ctx.lineTo(895, 3340);
+            ctx.lineTo(700, 3340);
+            ctx.lineTo(700, 2705);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(470, 1810);
+            ctx.lineTo(470, 1710);
+            ctx.lineTo(586, 1710);
+            ctx.lineTo(701, 1710);
+            ctx.lineTo(698, 1458);
+            ctx.bezierCurveTo(695, 1205, 695, 1205, 668, 1154);
+            ctx.bezierCurveTo(620, 1063, 513, 990, 428, 990);
+            ctx.lineTo(400, 990);
+            ctx.lineTo(400, 789);
+            ctx.lineTo(400, 589);
+            ctx.lineTo(458, 591);
+            ctx.bezierCurveTo(489, 592, 547, 602, 585, 613);
+            ctx.bezierCurveTo(833, 682, 1020, 879, 1087, 1140);
+            ctx.bezierCurveTo(1090, 1154, 1095, 1333, 1097, 1538);
+            ctx.lineTo(1101, 1910);
+            ctx.lineTo(786, 1910);
+            ctx.lineTo(470, 1910);
+            ctx.lineTo(470, 1810);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(2610, 1800);
+            ctx.lineTo(2610, 1690);
+            ctx.lineTo(2520, 1690);
+            ctx.lineTo(2430, 1690);
+            ctx.lineTo(2430, 1590);
+            ctx.lineTo(2430, 1490);
+            ctx.lineTo(2520, 1490);
+            ctx.lineTo(2610, 1490);
+            ctx.lineTo(2611, 1358);
+            ctx.bezierCurveTo(2612, 1194, 2615, 1167, 2644, 1074);
+            ctx.bezierCurveTo(2703, 890, 2846, 731, 3025, 649);
+            ctx.bezierCurveTo(3100, 615, 3202, 590, 3268, 590);
+            ctx.lineTo(3310, 590);
+            ctx.lineTo(3310, 789);
+            ctx.lineTo(3310, 987);
+            ctx.lineTo(3266, 992);
+            ctx.bezierCurveTo(3177, 1002, 3089, 1066, 3042, 1155);
+            ctx.bezierCurveTo(3018, 1201, 3015, 1217, 3012, 1348);
+            ctx.lineTo(3008, 1490);
+            ctx.lineTo(3119, 1490);
+            ctx.lineTo(3230, 1490);
+            ctx.lineTo(3230, 1590);
+            ctx.lineTo(3230, 1690);
+            ctx.lineTo(3120, 1690);
+            ctx.lineTo(3010, 1690);
+            ctx.lineTo(3010, 1800);
+            ctx.lineTo(3010, 1910);
+            ctx.lineTo(2810, 1910);
+            ctx.lineTo(2610, 1910);
+            ctx.lineTo(2610, 1800);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(1220, 1241);
+            ctx.bezierCurveTo(1220, 1142, 1191, 1037, 1115, 855);
+            ctx.bezierCurveTo(1103, 828, 1330, 699, 1475, 651);
+            ctx.bezierCurveTo(1666, 587, 1901, 573, 2085, 615);
+            ctx.bezierCurveTo(2124, 624, 2165, 633, 2176, 636);
+            ctx.bezierCurveTo(2209, 642, 2326, 688, 2383, 716);
+            ctx.bezierCurveTo(2461, 755, 2591, 843, 2586, 855);
+            ctx.bezierCurveTo(2522, 992, 2480, 1144, 2480, 1241);
+            ctx.lineTo(2480, 1293);
+            ctx.lineTo(2418, 1230);
+            ctx.bezierCurveTo(2269, 1081, 2088, 1001, 1884, 995);
+            ctx.bezierCurveTo(1649, 988, 1438, 1071, 1282, 1230);
+            ctx.lineTo(1220, 1294);
+            ctx.lineTo(1220, 1241);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(343, 284);
+            ctx.bezierCurveTo(343, 120, 340, 112, 274, 103);
+            ctx.bezierCurveTo(223, 97, 182, 113, 170, 145);
+            ctx.bezierCurveTo(161, 168, 157, 169, 98, 166);
+            ctx.bezierCurveTo(42, 164, 35, 161, 32, 142);
+            ctx.bezierCurveTo(27, 111, 78, 64, 131, 49);
+            ctx.bezierCurveTo(193, 32, 330, 35, 388, 54);
+            ctx.bezierCurveTo(415, 63, 448, 82, 461, 96);
+            ctx.bezierCurveTo(484, 120, 485, 129, 488, 276);
+            ctx.lineTo(492, 430);
+            ctx.lineTo(417, 430);
+            ctx.lineTo(343, 430);
+            ctx.lineTo(343, 284);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(644, 234);
+            ctx.lineTo(644, 38);
+            ctx.lineTo(884, 42);
+            ctx.bezierCurveTo(1085, 46, 1132, 50, 1168, 65);
+            ctx.bezierCurveTo(1213, 84, 1250, 122, 1250, 150);
+            ctx.bezierCurveTo(1250, 182, 1210, 220, 1164, 231);
+            ctx.lineTo(1119, 243);
+            ctx.lineTo(1147, 257);
+            ctx.bezierCurveTo(1220, 295, 1232, 343, 1178, 383);
+            ctx.bezierCurveTo(1130, 419, 1073, 427, 847, 429);
+            ctx.lineTo(644, 431);
+            ctx.lineTo(644, 234);
+            ctx.closePath();
+            ctx.moveTo(1045, 350);
+            ctx.bezierCurveTo(1060, 344, 1070, 332, 1070, 321);
+            ctx.bezierCurveTo(1070, 285, 1043, 276, 914, 272);
+            ctx.lineTo(790, 268);
+            ctx.lineTo(790, 313);
+            ctx.bezierCurveTo(790, 353, 793, 359, 813, 362);
+            ctx.bezierCurveTo(855, 368, 1021, 359, 1045, 350);
+            ctx.closePath();
+            ctx.moveTo(1041, 200);
+            ctx.bezierCurveTo(1089, 186, 1105, 168, 1090, 141);
+            ctx.bezierCurveTo(1076, 114, 1053, 109, 934, 108);
+            ctx.bezierCurveTo(777, 107, 790, 103, 790, 160);
+            ctx.lineTo(790, 210);
+            ctx.lineTo(898, 210);
+            ctx.bezierCurveTo(957, 210, 1021, 205, 1041, 200);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(1370, 410);
+            ctx.bezierCurveTo(1364, 399, 1361, 389, 1362, 389);
+            ctx.bezierCurveTo(1364, 388, 1413, 387, 1472, 386);
+            ctx.bezierCurveTo(1531, 385, 1581, 382, 1583, 380);
+            ctx.bezierCurveTo(1586, 377, 1541, 302, 1484, 212);
+            ctx.bezierCurveTo(1427, 123, 1380, 47, 1380, 44);
+            ctx.bezierCurveTo(1380, 41, 1401, 40, 1426, 42);
+            ctx.lineTo(1473, 45);
+            ctx.lineTo(1576, 209);
+            ctx.bezierCurveTo(1633, 299, 1682, 375, 1685, 378);
+            ctx.bezierCurveTo(1688, 382, 1745, 385, 1811, 385);
+            ctx.bezierCurveTo(1929, 386, 1949, 391, 1950, 423);
+            ctx.bezierCurveTo(1950, 427, 1822, 430, 1665, 430);
+            ctx.bezierCurveTo(1391, 430, 1380, 429, 1370, 410);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(2017, 348);
+            ctx.bezierCurveTo(1887, 145, 1830, 53, 1830, 47);
+            ctx.bezierCurveTo(1830, 43, 1850, 40, 1874, 40);
+            ctx.lineTo(1917, 40);
+            ctx.lineTo(2032, 223);
+            ctx.bezierCurveTo(2095, 323, 2150, 411, 2154, 418);
+            ctx.bezierCurveTo(2159, 427, 2149, 430, 2116, 430);
+            ctx.lineTo(2070, 430);
+            ctx.lineTo(2017, 348);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(2294, 373);
+            ctx.bezierCurveTo(2207, 237, 2090, 49, 2090, 45);
+            ctx.bezierCurveTo(2090, 42, 2109, 40, 2133, 40);
+            ctx.lineTo(2176, 40);
+            ctx.lineTo(2235, 135);
+            ctx.bezierCurveTo(2268, 187, 2313, 259, 2335, 294);
+            ctx.bezierCurveTo(2356, 330, 2377, 357, 2380, 354);
+            ctx.bezierCurveTo(2383, 351, 2385, 280, 2385, 197);
+            ctx.lineTo(2385, 45);
+            ctx.lineTo(2427, 42);
+            ctx.bezierCurveTo(2467, 39, 2476, 44, 2637, 171);
+            ctx.bezierCurveTo(2729, 244, 2823, 317, 2844, 333);
+            ctx.bezierCurveTo(2890, 369, 2892, 375, 2772, 185);
+            ctx.lineTo(2683, 45);
+            ctx.lineTo(2717, 42);
+            ctx.bezierCurveTo(2736, 40, 2758, 41, 2764, 43);
+            ctx.bezierCurveTo(2771, 46, 2821, 119, 2876, 207);
+            ctx.bezierCurveTo(2930, 294, 2977, 367, 2981, 370);
+            ctx.bezierCurveTo(2988, 376, 3010, 416, 3010, 424);
+            ctx.bezierCurveTo(3010, 427, 2983, 430, 2951, 430);
+            ctx.bezierCurveTo(2885, 430, 2908, 445, 2607, 207);
+            ctx.lineTo(2469, 98);
+            ctx.lineTo(2472, 264);
+            ctx.lineTo(2475, 430);
+            ctx.lineTo(2403, 430);
+            ctx.lineTo(2331, 430);
+            ctx.lineTo(2294, 373);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(3053, 238);
+            ctx.lineTo(2931, 45);
+            ctx.lineTo(3198, 42);
+            ctx.bezierCurveTo(3437, 40, 3466, 41, 3477, 56);
+            ctx.bezierCurveTo(3484, 65, 3488, 76, 3486, 79);
+            ctx.bezierCurveTo(3484, 82, 3385, 85, 3266, 85);
+            ctx.lineTo(3051, 84);
+            ctx.lineTo(3070, 115);
+            ctx.bezierCurveTo(3081, 131, 3100, 162, 3112, 183);
+            ctx.lineTo(3134, 220);
+            ctx.lineTo(3336, 220);
+            ctx.bezierCurveTo(3529, 220, 3540, 221, 3550, 240);
+            ctx.bezierCurveTo(3561, 260, 3558, 260, 3361, 260);
+            ctx.lineTo(3161, 260);
+            ctx.lineTo(3195, 313);
+            ctx.bezierCurveTo(3214, 341, 3233, 370, 3238, 375);
+            ctx.bezierCurveTo(3243, 382, 3324, 385, 3456, 385);
+            ctx.bezierCurveTo(3633, 384, 3667, 387, 3677, 400);
+            ctx.bezierCurveTo(3684, 408, 3690, 418, 3690, 423);
+            ctx.bezierCurveTo(3690, 427, 3574, 430, 3432, 430);
+            ctx.lineTo(3175, 430);
+            ctx.lineTo(3053, 238);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+            ctx.restore();
+            ctx.restore();
+        };
+
+
+
+        function drawTicks(ctx) {
+            //hour ticks  
+            var tickPathPattern = 'M {0},-{2} L {1},-{2} {1},{2} {0},{2} Z'
+            var tickPath = String.format(tickPathPattern, 0.65 * clockRadius, 0.87 * clockRadius, 0.03 * clockRadius);
+            drawPath(ctx, tickPath, '#000000', 0);
+            drawPath(ctx, tickPath, '#000000', 30);
+            drawPath(ctx, tickPath, '#000000', 60);
+            drawPath(ctx, tickPath, '#000000', 90);
+            drawPath(ctx, tickPath, '#000000', 120);
+            drawPath(ctx, tickPath, '#000000', 150);
+            drawPath(ctx, tickPath, '#000000', 180);
+            drawPath(ctx, tickPath, '#000000', -30);
+            drawPath(ctx, tickPath, '#000000', -60);
+            drawPath(ctx, tickPath, '#000000', -90);
+            drawPath(ctx, tickPath, '#000000', -120);
+            drawPath(ctx, tickPath, '#000000', -150);
+
+            tickPath = String.format(tickPathPattern, 0.81 * clockRadius, 0.87 * clockRadius, 0.0125 * clockRadius);
+            for (var i = 0; i < 360; i += 30) {
+                for (var j = 0; j < 25; j += 6) {
+                    if (j != 0) {
+                        //outer tick ring - long ticks
+                        drawPath(ctx, tickPath, '#000000', i + j);
+                    }
+                }
+            }
+        }
+
+        function drawSecHand(ctx, ang) {
+            var myAng = (ang % 360) / 360 * 2 * Math.PI;
+            var x = 0.55 * clockRadius * Math.cos(myAng);
+            var y = 0.55 * clockRadius * Math.sin(myAng);
+
+            if (showShadow) {
+                ctx.shadowBlur = 0.05 * clockRadius;
+                ctx.shadowOffsetX = -0.008 * clockRadius;
+                ctx.shadowOffsetY = 0.008 * clockRadius;
+                ctx.shadowColor = '#000000';
+            }
+            else {
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+                ctx.shadowBlur = 0;
+            }
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(x, y, 0.095 * clockRadius, 0, 2 * Math.PI);
+            ctx.rotate(ang == undefined ? 0 : ang * Math.PI / 180.0);
+            ctx.moveTo(-0.32 * clockRadius, -0.015 * clockRadius);
+            ctx.lineTo(0.64 * clockRadius, -0.015 * clockRadius);
+            ctx.lineTo(0.64 * clockRadius, 0.015 * clockRadius);
+            ctx.lineTo(-0.32 * clockRadius, 0.015 * clockRadius);
+
+            ctx.fillStyle = '#A7111D';
+            ctx.fill();
+            ctx.closePath();
+            ctx.restore();
+        }
+
+        function drawMinHand(ctx, ang) {
+            if (showShadow) {
+                ctx.shadowBlur = 0.04 * clockRadius;
+                ctx.shadowOffsetX = -0.007 * clockRadius;
+                ctx.shadowOffsetY = 0.007 * clockRadius;
+                ctx.shadowColor = '#000000';
+            }
+            else {
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+                ctx.shadowBlur = 0;
+            }
+
+            var handPathPattern = 'M {0},-{2} L {1},-{3} {1},{3} {0},{2} Z'
+            var handPath = String.format(handPathPattern, -0.20 * clockRadius, 0.84 * clockRadius, 0.045 * clockRadius, 0.035 * clockRadius);
+            drawPath(ctx, handPath, '#000000', ang);
+        }
+
+        function drawHourHand(ctx, ang) {
+            if (showShadow) {
+                ctx.shadowBlur = 0.03 * clockRadius;
+                ctx.shadowOffsetX = -0.006 * clockRadius;
+                ctx.shadowOffsetY = 0.006 * clockRadius;
+                ctx.shadowColor = '#000000';
+            }
+            else {
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+                ctx.shadowBlur = 0;
+            }
+
+            var handPathPattern = 'M {0},-{2} L {1},-{3} {1},{3} {0},{2} Z'
+            var handPath = String.format(handPathPattern, -0.21 * clockRadius, 0.58 * clockRadius, 0.06 * clockRadius, 0.045 * clockRadius);
+            drawPath(ctx, handPath, '#000000', ang);
+        }
+
+        function drawFace2(ctx) {
+
+            //inner center button
+            if (showShadow) {
+                ctx.shadowBlur = 0.01 * clockRadius;
+                ctx.shadowOffsetX = -0.0001 * clockRadius;
+                ctx.shadowOffsetY = 0.0001 * clockRadius;
+                ctx.shadowColor = '#720C16';
+                ctx.beginPath();
+                ctx.arc(clockRadius, clockRadius, 0.014 * clockRadius, 0, 2 * Math.PI);
+                ctx.fillStyle = '#A7111D';
+                ctx.fill();
+                ctx.closePath();
+            }
+
+            //highlight (gradient overlay)
+            //var g3x1 = clockRadius + 0.94*clockRadius * Math.cos(4/3*Math.PI);
+            //var g3y1 = clockRadius + 0.94*clockRadius * Math.sin(4/3*Math.PI)
+            //var g3x2 = clockRadius + 0.94*clockRadius * Math.cos(1/3*Math.PI);
+            //var g3y2 = clockRadius + 0.94*clockRadius * Math.sin(1/3*Math.PI);      
+            //var g3 = ctx.createLinearGradient(g3x1,g3y1,g3x2,g3y2);
+            //g3.addColorStop(0, 'rgba(255,255,255,0.2)');   
+            //g3.addColorStop(1, 'rgba(255,255,255,0)');
+
+            //ctx.beginPath();
+            //ctx.arc(clockRadius, clockRadius, 0.94*clockRadius, 0, 2 * Math.PI);
+            //ctx.fillStyle = g3;
+            //ctx.fill();
+            //ctx.closePath();
+        }
+
+        /** Simple svg path parser that only understands M (move to) and L (line to). */
+        function drawPath(ctx, path, fill, ang) {
+            ctx.save();
+            ctx.rotate(ang == undefined ? 0 : ang * Math.PI / 180.0);
+            ctx.beginPath();
+
+            var parts = path.split(' ');
+            while (parts.length > 0) {
+                var part = parts.shift();
+                if (part == 'M') {
+                    coords = parts.shift().split(',');
+                    ctx.moveTo(coords[0], coords[1]);
+                } else if (part == 'L') {
+                    continue;
+                } else if (part == 'Z') {
+                    break;
+                } else if (part.indexOf(',') >= 0) {
+                    coords = part.split(',');
+                    ctx.lineTo(coords[0], coords[1]);
+                }
+            }
+
+            ctx.closePath();
+            ctx.fillStyle = (fill == undefined ? '#000' : fill);
+            ctx.fill();
+            ctx.restore();
+        }
+    </script>
+</body>
+</html>
